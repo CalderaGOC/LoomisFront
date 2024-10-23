@@ -1,95 +1,136 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input,
+  ModalCloseButton,
+  FormControl,
+  FormLabel,
+  useDisclosure,
+  Alert,
+  AlertIcon,
+  Flex,  
+  Box,
+} from '@chakra-ui/react';
 
-export default function Home() {
+export default function HomePage() {
+  const { isOpen, onOpen, onClose: chakraOnClose } = useDisclosure();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    try {
+      const response = await fetch('http://localhost:3002/usuarios/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+      
+      if (data.token && data.user && data.user.nombre) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.user.nombre);
+        
+
+        await fetch('http://localhost:3002/usuarios/ultimo_login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${data.token}`
+          }
+        });
+        router.push('/usuarios');
+      } else {
+        setErrorMessage(data.message);
+        console.error(data.message);
+      }
+    } catch (error) {
+      setErrorMessage('Error durante la autenticación');
+      console.error('Error durante la autenticación', error);
+    }
+  };
+
+  // Limpiar el modal cuando se cierra
+  const handleModalClose = () => {
+    setUsername(''); // Limpiar el campo de usuario
+    setPassword(''); // Limpiar el campo de contraseña
+    setErrorMessage(''); // Limpiar cualquier mensaje de error
+    chakraOnClose(); // Cerrar el modal
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <Flex
+      height="100vh"
+      width="100vw"
+      alignItems="center"
+      justifyContent="center"
+      flexDirection="column"
+      textAlign="center"
+    >
+      {/* Logo de la empresa */}
+      <Box mb={5}>
+        <img src="/logo.jpg" alt="Company Logo" width={200} height={200} />
+      </Box>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      {/* Botón de login que abre el modal */}
+      <Button onClick={onOpen} colorScheme="teal" size="lg">
+        Login
+      </Button>
+
+      {/* Modal de autenticación */}
+      <Modal isOpen={isOpen} onClose={handleModalClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Iniciar sesión</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {errorMessage && (
+              <Alert status="error" mb={4}>
+                <AlertIcon />
+                {errorMessage}
+              </Alert>
+            )}
+            <FormControl>
+              <FormLabel>Usuario</FormLabel>
+              <Input
+                type="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Ingresa tu usuario"
+              />
+            </FormControl>
+            <FormControl mt={4}>
+              <FormLabel>Password</FormLabel>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Ingresa tu contraseña"
+              />
+            </FormControl>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button colorScheme="teal" mr={3} onClick={handleLogin}>
+              Login
+            </Button>
+            <Button variant="ghost" onClick={handleModalClose}>
+              Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Flex>
   );
 }
